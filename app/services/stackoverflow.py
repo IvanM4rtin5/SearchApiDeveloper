@@ -8,7 +8,6 @@ from app.schemas.response import SearchResult
 
 STACKEXCHANGE_API_URL = "https://api.stackexchange.com/2.3/search/advanced"
 
-
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def search_stackoverflow(query: str, limit: int) -> List[SearchResult]:
     """
@@ -21,10 +20,10 @@ async def search_stackoverflow(query: str, limit: int) -> List[SearchResult]:
             "q": query,
             "site": "stackoverflow",
             "pagesize": limit,
-            "filter": "withbody", # Filtro para incluir o corpo da pergunta para o snippet
+            "filter": "withbody", 
         }
-        if settings.STACKEXCHANGE_KEY:
-            params["key"] = settings.STACKEXCHANGE_KEY
+        # if settings.STACKEXCHANGE_KEY:
+        #     params["key"] = settings.STACKEXCHANGE_KEY
 
         try:
             logger.info(f"Buscando no Stack Overflow com a query: '{query}'")
@@ -46,13 +45,16 @@ def _normalize_results(items: List[Dict[str, Any]]) -> List[SearchResult]:
     """
     normalized = []
     for item in items:
+        text = item.get("body") or item.get("body_markdown", "")
+        
+        
         normalized.append(SearchResult(
             source="stackoverflow",
             title=item["title"],
             url=item["link"],
-            snippet=item.get("body_markdown", "")[:250] + "...", # Pega os primeiros 250 caracteres do corpo
+            snippet=text[:250] + "...",
             raw_score=item["score"],
             tags=item.get("tags", []),
-            score=0 # O score final será calculado depois
+            score=0 
         ))
     return normalized

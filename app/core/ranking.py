@@ -25,9 +25,8 @@ def rank_results(results: List[SearchResult]) -> List[SearchResult]:
     for result in results:
         popularity = result.raw_score or 0
         source_weight = SOURCE_WEIGHTS.get(result.source, 0.5)
-        # A relevância do texto já é considerada na ordem que a API externa retorna.
-        # Esta é uma fórmula simplificada para o MVP.
-        result.score = (popularity * 0.3) + (source_weight * 100 * 0.2) # Multiplicador para dar mais peso à fonte
+        
+        result.score = (popularity * 0.3) + (source_weight * 100 * 0.2) # 
 
     # Ordena os resultados pelo score final, do maior para o menor.
     return sorted(results, key=lambda r: r.score, reverse=True)

@@ -1,39 +1,38 @@
 import asyncio
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Query
 
-from app.schemas.request import SearchParams, SearchProvider
+from typing import List, Optional
+from app.schemas.request import  SearchProvider
 from app.schemas.response import SearchResponse
-from app.services import stackoverflow
+from app.services import stackoverflow, devto
 from app.core.ranking import rank_results
 
 router = APIRouter()
 
 
 @router.get("/search", response_model=SearchResponse)
-async def search(params: SearchParams = Depends()):
-    """
-    Executa uma busca federada por um problema técnico em diversas fontes.
-    """
-    # Mapeia os provedores de busca para suas respectivas funções de serviço.
+async def search(
+    query: str,
+    sources: Optional[List[SearchProvider]] = Query(None),
+    limit: int = 10
+):
     provider_map = {
         SearchProvider.STACKOVERFLOW: stackoverflow.search_stackoverflow,
-        # Outros provedores serão adicionados aqui.
+        SearchProvider.DEVTO: devto.search_devto,
     }
 
-    # Se nenhuma fonte for especificada, busca em todas as disponíveis.
-    sources_to_search = params.sources or list(provider_map.keys())
+    if not sources:
+        sources = list(provider_map.keys())
 
-    # Cria uma lista de tarefas assíncronas para buscar em paralelo.
     tasks = [
-        provider_map[source](params.query, params.limit)
-        for source in sources_to_search if source in provider_map
+        provider_map[source](query, limit)
+        for source in sources
+        if source in provider_map
     ]
 
-    # Executa todas as buscas concorrentemente.
-    results_from_providers = await asyncio.gather(*tasks)
-    flat_results = [item for sublist in results_from_providers for item in sublist]
+    results = await asyncio.gather(*tasks)
+    flat_results = [item for sublist in results for item in sublist]
 
-    # Aplica o ranking e retorna a resposta.
     ranked_results = rank_results(flat_results)
 
-    return SearchResponse(query=params.query, results=ranked_results)
+    return SearchResponse(query=query, results=ranked_results)

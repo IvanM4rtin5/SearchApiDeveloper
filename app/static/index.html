@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Developer Search</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .result-item {
+            border-left: 4px solid #0d6efd;
+            padding-left: 15px;
+            margin-bottom: 20px;
+        }
+        .result-item h5 {
+            margin-bottom: 5px;
+        }
+        .result-item a {
+            text-decoration: none;
+        }
+        .result-item .source {
+            font-weight: bold;
+            color: #6c757d;
+        }
+        .result-item .score {
+            font-size: 0.9em;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4 text-center">Developer Search</h1>
+        <form id="search-form">
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="query" placeholder="Enter your technical problem..." required>
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Sources:</label>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="stackoverflow" value="stackoverflow" >
+                    <label class="form-check-label" for="stackoverflow">Stack Overflow</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="devto" value="devto">
+                    <label class="form-check-label" for="devto">Dev.to</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="youtube" value="youtube" disabled>
+                    <label class="form-check-label" for="youtube">YouTube</label>
+                </div>
+                 <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="medium" value="medium" disabled>
+                    <label class="form-check-label" for="medium">Medium</label>
+                </div>
+            </div>
+        </form>
+
+        <div id="results" class="mt-4"></div>
+    </div>
+
+    <script>
+        document.getElementById('search-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const query = document.getElementById('query').value;
+            const sources = Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(el => el.value);
+            
+            const url = new URL('/api/v1/search', window.location.origin);
+            url.searchParams.append('query', query);
+            sources.forEach(source => url.searchParams.append('sources', source));
+            
+            console.log(sources);
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                displayResults(data.results);
+            } catch (error) {
+                console.error('Error fetching search results:', error);
+                document.getElementById('results').innerHTML = `<div class="alert alert-danger">Error fetching results. See console for details.</div>`;
+            }
+        });
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<div class="alert alert-info">No results found.</div>';
+                return;
+            }
+
+            results.forEach(result => {
+                const resultEl = document.createElement('div');
+                resultEl.classList.add('result-item');
+                
+                let tagsHtml = '';
+                if (result.tags && result.tags.length > 0) {
+                    tagsHtml = result.tags.map(tag => `<span class="badge bg-secondary me-1">${tag}</span>`).join('');
+                }
+
+                resultEl.innerHTML = `
+                    <h5><a href="${result.url}" target="_blank">${result.title}</a></h5>
+                    <p class="source">${result.source}</p>
+                    <p>${result.snippet || ''}</p>
+                    <p class="score">Relevance: ${result.score.toFixed(2)}</p>
+                    <div>${tagsHtml}</div>
+                `;
+                resultsContainer.appendChild(resultEl);
+            });
+        }
+    </script>
+</body>
+</html>

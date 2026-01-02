@@ -1,13 +1,14 @@
 import sys
 from fastapi import FastAPI
 from loguru import logger
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.api.search import router as search_router
 
-# --- Configuração do Logging com Loguru ---
-# Remove o handler padrão para evitar duplicação de logs.
 logger.remove()
-# Adiciona um novo handler para o stderr com um formato mais informativo.
+
 logger.add(
     sys.stderr,
     level="INFO",
@@ -20,5 +21,21 @@ app = FastAPI(
     description="Uma API de busca federada para resolver problemas técnicos de desenvolvedores.",
     version="0.1.0",
 )
+
+# Configuração do CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Permite todas as origens
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos os métodos
+    allow_headers=["*"],  # Permite todos os cabeçalhos
+)
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse('app/static/index.html')
+
 
 app.include_router(search_router, prefix="/api/v1", tags=["Search"])
